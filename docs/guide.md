@@ -429,9 +429,7 @@ from maibot_sdk.types import ToolParameterInfo, ToolParamType
 
 @Tool(
     "web_search",
-    description="搜索互联网",
-    brief_description="查询互联网信息并返回结果摘要",
-    detailed_description="参数说明：\n- query：string，必填。搜索关键词。\n- limit：integer，可选。返回结果数量。",
+    description="查询互联网信息并返回结果摘要",
     parameters=[
         ToolParameterInfo(
             name="query",
@@ -455,10 +453,11 @@ async def handle_search(self, query: str, limit: int = 5, **kwargs):
 ```
 
 描述字段约定：
+- `description`：关于工具的描述，包括使用方法，使用情景，注意事项
 
+以下字段已弃用，如果没有`description`，会将`brief_description`作为`description`
 - `brief_description`：给主程序或小模型快速判断“这个工具是做什么的”
 - `detailed_description`：描述参数、必填项、可选项和调用约束
-- `description`：兼容旧写法；如果不显式提供 `brief_description`，会自动作为简要描述使用
 
 **ToolParamType 枚举**：
 
