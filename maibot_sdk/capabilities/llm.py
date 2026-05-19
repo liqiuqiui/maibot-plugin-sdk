@@ -102,6 +102,44 @@ class LLMCapability:
             return _normalize_llm_result(result)
         return {"success": False, "response": "", "reasoning": "", "model": "", "tool_calls": []}
 
+    async def embed(
+        self,
+        text: str | None = None,
+        *,
+        texts: List[str] | None = None,
+        task_name: str = "embedding",
+        model: str = "",
+        model_name: str = "",
+        max_concurrent: int | None = None,
+        **kwargs: Any,
+    ) -> Dict[str, Any]:
+        """生成文本嵌入向量。
+
+        Args:
+            text: 单条文本。
+            texts: 多条文本。``text`` 与 ``texts`` 只能传入一个。
+            task_name: 模型任务名，默认使用 ``embedding``。
+            model: 兼容 Host 的模型任务别名。
+            model_name: 兼容 Host 的模型任务别名。
+            max_concurrent: 批量嵌入时的最大并发数。
+            **kwargs: Host 支持的额外参数。
+
+        Returns:
+            Dict[str, Any]: Host 返回的嵌入结果。单条文本通常包含 ``embedding``；
+            批量文本通常包含 ``results``。
+        """
+
+        return await self._ctx.call_capability(
+            "llm.embed",
+            text=text,
+            texts=texts,
+            task_name=task_name,
+            model=model,
+            model_name=model_name,
+            max_concurrent=max_concurrent,
+            **kwargs,
+        )
+
     async def get_available_models(self) -> List[str]:
         """获取可用模型列表。
 

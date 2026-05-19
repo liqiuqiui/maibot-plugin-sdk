@@ -36,6 +36,7 @@
   - [Render -- 渲染](#render----渲染)
   - [Knowledge -- 知识库](#knowledge----知识库)
   - [Tool -- 工具定义](#tool----工具定义)
+  - [Maisaka -- 主动任务](#maisaka----主动任务)
   - [Logger -- 日志](#logger----日志)
 - [消息模型](#消息模型)
 - [类型定义](#类型定义)
@@ -854,7 +855,7 @@ class ExampleLLMPlugin(MaiBotPlugin):
 
 所有能力通过 `self.ctx` 访问。底层统一转发为 RPC 请求，插件无需关心 IPC 细节。
 
-当前 `PluginContext` 暴露 15 个能力代理：`api`、`gateway`、`send`、`db`、`llm`、`config`、`emoji`、`message`、`frequency`、`component`、`chat`、`person`、`render`、`knowledge`、`tool`，以及一个标准 `logging.Logger` 形式的 `logger` 属性。
+当前 `PluginContext` 暴露 16 个能力代理：`api`、`gateway`、`send`、`db`、`llm`、`config`、`emoji`、`message`、`frequency`、`component`、`chat`、`person`、`render`、`knowledge`、`tool`、`maisaka`，以及一个标准 `logging.Logger` 形式的 `logger` 属性。
 
 ### API -- 插件 API
 
@@ -1061,6 +1062,7 @@ llm = self.ctx.llm
 |------|------|
 | `await llm.generate(prompt, model, temperature, max_tokens)` | 文本生成 |
 | `await llm.generate_with_tools(prompt, tools, ...)` | 带工具调用的生成 |
+| `await llm.embed(text=..., texts=...)` | 生成文本嵌入向量 |
 | `await llm.get_available_models()` | 获取可用模型列表，返回 `list[str]` |
 
 **generate 返回值**：
@@ -1112,6 +1114,12 @@ result = await self.ctx.llm.generate_with_tools(
     }],
 )
 tool_calls = result.get("tool_calls", [])
+
+# 单条文本嵌入
+embedding = await self.ctx.llm.embed(text="需要向量化的文本")
+
+# 批量文本嵌入
+embeddings = await self.ctx.llm.embed(texts=["第一段文本", "第二段文本"], max_concurrent=4)
 ```
 
 ### Config -- 配置
@@ -1204,6 +1212,7 @@ message = self.ctx.message
 | 方法 | 说明 |
 |------|------|
 | `await message.get_recent(chat_id, limit)` | 获取最近消息 |
+| `await message.get_by_id(message_id, chat_id="", stream_id="")` | 按消息 ID 查询单条消息 |
 | `await message.build_readable(messages, **kwargs)` | 将消息列表格式化为可读字符串 |
 | `await message.get_by_time(start_time, end_time)` | 按时间范围查询（全局） |
 | `await message.get_by_time_in_chat(chat_id, start_time, end_time)` | 按时间范围查询指定聊天 |
@@ -1280,8 +1289,9 @@ chat = self.ctx.chat
 | `await chat.get_private_streams(platform)` | `platform: str = "qq"` | 获取所有私聊流 |
 | `await chat.get_stream_by_group_id(group_id, platform)` | `group_id: str` | 按群 ID 查找聊天流 |
 | `await chat.get_stream_by_user_id(user_id, platform)` | `user_id: str` | 按用户 ID 查找私聊流 |
+| `await chat.open_session(platform, chat_type, **kwargs)` | `chat_type: "private" \| "group"` | 打开或创建聊天流 |
 
-`chat.get_all_streams()`、`chat.get_group_streams()`、`chat.get_private_streams()` 会直接返回聊天流列表；两个 `get_stream_by_*()` 方法会直接返回单个聊天流字典或 `None`。
+`chat.get_all_streams()`、`chat.get_group_streams()`、`chat.get_private_streams()` 会直接返回聊天流列表；两个 `get_stream_by_*()` 方法会直接返回单个聊天流字典或 `None`。`chat.open_session()` 会返回 Host 的完整结果，通常包含 `success`、`created`、`stream_id`、`session_id`、`chat_type` 和 `stream`。
 
 示例：
 
@@ -1293,6 +1303,14 @@ streams = await self.ctx.chat.get_group_streams()
 stream = await self.ctx.chat.get_stream_by_group_id("123456")
 if stream:
     await self.ctx.send.text("hello", stream["session_id"])
+
+# 打开或创建群聊聊天流
+opened = await self.ctx.chat.open_session(
+    platform="qq",
+    chat_type="group",
+    group_id="123456",
+)
+await self.ctx.send.text("hello", opened["stream_id"])
 ```
 
 ### Person -- 用户信息
@@ -1385,6 +1403,41 @@ tool = self.ctx.tool
 返回的列表中每个元素包含 `name` 和 `definition` 字段。
 
 `tool.get_definitions()` 会直接返回工具定义列表，不需要再从 RPC 结果里手动读取 `tools` 字段。
+
+### Maisaka -- 主动任务
+
+```python
+maisaka = self.ctx.maisaka
+```
+
+| 方法 | 说明 |
+|------|------|
+| `await maisaka.proactive.trigger(stream_id, intent, **kwargs)` | 请求 Maisaka 基于指定聊天流主动处理一轮对话 |
+| `await maisaka.context.append(stream_id, segments, **kwargs)` | 向指定聊天流的 Maisaka 上下文追加一条图文消息 |
+| `await maisaka.trigger_proactive(stream_id, intent, **kwargs)` | `maisaka.proactive.trigger()` 的便捷别名 |
+| `await maisaka.append_context(stream_id, segments, **kwargs)` | `maisaka.context.append()` 的便捷别名 |
+
+示例：
+
+```python
+# 主动任务不会直接发送固定文本，而是把意图交给 Maisaka 决定如何表达
+result = await self.ctx.maisaka.proactive.trigger(
+    stream_id=stream_id,
+    intent="提醒用户今晚 20:00 有日程",
+    reason="calendar_reminder",
+    metadata={"source": "calendar_plugin"},
+)
+
+# 向当前聊天流追加一条插件上下文消息
+await self.ctx.maisaka.context.append(
+    stream_id=stream_id,
+    segments=[{"type": "text", "content": "用户刚刚完成了一个插件任务"}],
+    visible_text="用户刚刚完成了一个插件任务",
+    source_kind="plugin:calendar",
+)
+```
+
+`maisaka.proactive.trigger()` 需要传入 Host 中已经存在的聊天流 ID；如果插件需要主动打开私聊或群聊，请先通过 `ctx.chat.open_session()` 获取聊天流。
 
 ### Logger -- 日志
 

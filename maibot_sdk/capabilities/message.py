@@ -30,6 +30,31 @@ class MessageCapability:
             limit=limit,
         )
 
+    async def get_by_id(
+        self,
+        message_id: str,
+        *,
+        chat_id: str = "",
+        stream_id: str = "",
+        include_binary_data: bool = False,
+    ) -> Any:
+        """根据消息 ID 获取单条消息。
+
+        Args:
+            message_id: 消息 ID。
+            chat_id: 可选的聊天流 ID。
+            stream_id: 可选的聊天流 ID，等价于 ``chat_id``。
+            include_binary_data: 是否包含图片、语音等二进制数据。
+        """
+
+        return await self._ctx.call_capability(
+            "message.get_by_id",
+            message_id=message_id,
+            chat_id=chat_id,
+            stream_id=stream_id,
+            include_binary_data=include_binary_data,
+        )
+
     async def build_readable(self, messages: Any, **kwargs: Any) -> Any:
         """构建可读的消息字符串
 

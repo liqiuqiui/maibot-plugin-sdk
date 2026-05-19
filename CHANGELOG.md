@@ -7,6 +7,25 @@
 
 ## [Unreleased]
 
+### 新增
+
+- `ChatCapability` 新增 `ctx.chat.open_session()`，支持通过 SDK 直接调用 Host 的 `chat.open_session` 能力打开或创建聊天流
+- 新增 `MaisakaCapability` 与 `ctx.maisaka` 能力代理，支持 `ctx.maisaka.proactive.trigger()` 触发 Maisaka 主动任务，以及 `ctx.maisaka.context.append()` 追加 Maisaka 上下文消息
+- `LLMCapability` 新增 `ctx.llm.embed()`，`MessageCapability` 新增 `ctx.message.get_by_id()`，补齐 Host 已注册能力
+- Host 新增 `send.forward` 与 `send.hybrid` 能力实现，对齐 SDK 已暴露的发送代理
+
+### 文档
+
+- 更新 `README.md`、`docs/guide.md` 与 `docs/migration-guide.md`，补充 `ctx.chat.open_session()` 说明
+- 更新 `README.md` 与 `docs/guide.md`，将能力代理数量同步为 16 个，并补充 Maisaka 能力代理说明
+- 更新 `docs/guide.md`，补充 `ctx.llm.embed()` 与 `ctx.message.get_by_id()` 说明
+
+### 测试
+
+- 补充 `ctx.chat.open_session()` 参数转发和返回值保留的回归测试
+- 补充 `ctx.maisaka.proactive.trigger()` 与 `ctx.maisaka.context.append()` 参数转发回归测试
+- 补充 `ctx.llm.embed()`、`ctx.message.get_by_id()`、`send.forward` 和 `send.hybrid` 的对齐回归测试
+
 
 ## [2.4.0] - 2026-04-27
 

@@ -1101,6 +1101,7 @@ timeout: int = Field(
 | — | `await self.ctx.chat.get_private_streams()` |
 | — | `await self.ctx.chat.get_stream_by_group_id(group_id)` |
 | — | `await self.ctx.chat.get_stream_by_user_id(user_id)` |
+| — | `await self.ctx.chat.open_session(platform, chat_type, ...)` |
 
 ### 发言频率
 
@@ -1657,6 +1658,7 @@ msg.modify_plain_text("新文本")
 | | `.get_private_streams()` | 私聊流 |
 | | `.get_stream_by_group_id(id)` | 按群组查找 |
 | | `.get_stream_by_user_id(id)` | 按用户查找 |
+| | `.open_session(platform, chat_type, ...)` | 打开或创建聊天流 |
 | `self.ctx.frequency` | `.get_current_talk_value(chat_id)` | 当前频率 |
 | | `.set_adjust(chat_id, value)` | 设置调整值 |
 | | `.get_adjust(chat_id)` | 获取调整值 |

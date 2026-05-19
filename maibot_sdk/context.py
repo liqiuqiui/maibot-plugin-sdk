@@ -18,6 +18,7 @@ from maibot_sdk.capabilities.frequency import FrequencyCapability
 from maibot_sdk.capabilities.gateway import GatewayCapability
 from maibot_sdk.capabilities.knowledge import KnowledgeCapability
 from maibot_sdk.capabilities.llm import LLMCapability
+from maibot_sdk.capabilities.maisaka import MaisakaCapability
 from maibot_sdk.capabilities.message import MessageCapability
 from maibot_sdk.capabilities.person import PersonCapability
 from maibot_sdk.capabilities.render import RenderCapability
@@ -60,6 +61,7 @@ _CAPABILITY_RESULT_KEYS: dict[str, str] = {
     "llm.get_available_models": "models",
     "message.build_readable": "text",
     "message.count_new": "count",
+    "message.get_by_id": "message",
     "message.get_by_time": "messages",
     "message.get_by_time_in_chat": "messages",
     "message.get_recent": "messages",
@@ -133,6 +135,7 @@ class PluginContext:
         self.render: RenderCapability = RenderCapability(current_ctx)
         self.knowledge: KnowledgeCapability = KnowledgeCapability(current_ctx)
         self.tool: ToolCapability = ToolCapability(current_ctx)
+        self.maisaka: MaisakaCapability = MaisakaCapability(current_ctx)
 
     @property
     def plugin_id(self) -> str:
