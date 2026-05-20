@@ -63,13 +63,15 @@ class EmojiCapability:
             emoji_base64=emoji_base64,
         )
 
-    async def delete_emoji(self, emoji_hash: str) -> Any:
+    async def delete_emoji(self, emoji_hash: str, keep_desc: bool | None = None) -> Any:
         """删除表情包
 
         Args:
-            emoji_hash: 表情包 MD5 哈希
+            emoji_hash: 表情包 SHA256 哈希。
+            keep_desc: 是否保留描述缓存。为 ``True`` 时删除文件但保留数据库描述记录；
+                为 ``False`` 时同时删除数据库记录；为 ``None`` 时由 Host 根据是否有描述自动决定。
         """
-        return await self._ctx.call_capability(
-            "emoji.delete",
-            emoji_hash=emoji_hash,
-        )
+        payload: dict[str, Any] = {"emoji_hash": emoji_hash}
+        if keep_desc is not None:
+            payload["keep_desc"] = keep_desc
+        return await self._ctx.call_capability("emoji.delete", **payload)

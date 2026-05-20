@@ -1201,7 +1201,7 @@ emoji = self.ctx.emoji
 | `await emoji.get_emotions()` | 获取情感标签列表 |
 | `await emoji.get_all()` | 获取全部表情包 |
 | `await emoji.register_emoji(emoji_base64)` | 注册新表情 |
-| `await emoji.delete_emoji(emoji_hash)` | 删除表情 |
+| `await emoji.delete_emoji(emoji_hash, keep_desc=None)` | 删除表情；`keep_desc=True` 保留描述缓存，`False` 同时删除数据库记录，`None` 由 Host 自动判断 |
 
 ### Message -- 消息查询
 

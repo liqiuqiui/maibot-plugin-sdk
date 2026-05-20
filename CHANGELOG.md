@@ -11,6 +11,10 @@
 
 - `ChatCapability` 新增 `ctx.chat.open_session()`，支持通过 SDK 直接调用 Host 的 `chat.open_session` 能力打开或创建聊天流
 - 新增 `MaisakaCapability` 与 `ctx.maisaka` 能力代理，支持 `ctx.maisaka.proactive.trigger()` 触发 Maisaka 主动任务，以及 `ctx.maisaka.context.append()` 追加 Maisaka 上下文消息
+
+### 变更
+
+- 同步发布版本号到 `2.5.1`，对齐 `pyproject.toml`、`maibot_sdk.__version__`、`uv.lock` 与测试断言
 - `LLMCapability` 新增 `ctx.llm.embed()`，`MessageCapability` 新增 `ctx.message.get_by_id()`，补齐 Host 已注册能力
 - Host 新增 `send.forward` 与 `send.hybrid` 能力实现，对齐 SDK 已暴露的发送代理
 

@@ -1069,7 +1069,7 @@ timeout: int = Field(
 | — | `await self.ctx.emoji.get_count()` |
 | — | `await self.ctx.emoji.get_all()` |
 | — | `await self.ctx.emoji.register_emoji(base64)` |
-| — | `await self.ctx.emoji.delete_emoji(hash)` |
+| — | `await self.ctx.emoji.delete_emoji(hash, keep_desc=None)` |
 
 > **兼容层说明**：旧版 `emoji_api.get_random()` / `emoji_api.get_by_description()` 在 IPC 运行时下会直接返回新版 SDK 的归一化字典结果（如 `{"base64": ..., "description": ..., "emotion": ...}`），而不是旧系统里常见的 tuple 结构。迁移时不要再按位置解包。
 
@@ -1647,7 +1647,7 @@ msg.modify_plain_text("新文本")
 | | `.get_info()` | 统计信息 |
 | | `.get_emotions()` | 情感标签 |
 | | `.register_emoji(base64)` | 注册表情 |
-| | `.delete_emoji(hash)` | 删除表情 |
+| | `.delete_emoji(hash, keep_desc=None)` | 删除表情；可控制是否保留描述缓存 |
 | `self.ctx.message` | `.get_recent(chat_id, limit)` | 最近消息 |
 | | `.get_by_time(start, end)` | 按时间查询 |
 | | `.get_by_time_in_chat(chat_id, start, end)` | 按时间+聊天查询 |

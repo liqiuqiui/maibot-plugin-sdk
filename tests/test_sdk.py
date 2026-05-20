@@ -486,7 +486,7 @@ def test_capability_classes_importable():
 def test_version():
     import maibot_sdk
 
-    assert maibot_sdk.__version__ == "2.5.0"
+    assert maibot_sdk.__version__ == "2.5.1"
 
 
 def test_component_capability_normalizes_lowercase_component_type():
@@ -775,6 +775,31 @@ def test_capabilities_unwrap_host_wrapper_results():
     assert result["talk_value"] == 0.75
     assert result["tools"] == [{"name": "demo"}]
     assert result["send_ok"] is True
+
+
+def test_emoji_delete_forwards_keep_desc_argument():
+    from maibot_sdk.context import PluginContext
+
+    captured: dict[str, object] = {}
+
+    async def fake_rpc_call(method: str, plugin_id: str = "", payload: dict | None = None):
+        captured["method"] = method
+        captured["plugin_id"] = plugin_id
+        captured["payload"] = payload
+        return {"success": True, "hash": "hash-demo", "keep_desc": False}
+
+    async def main() -> object:
+        ctx = PluginContext(plugin_id="demo", rpc_call=fake_rpc_call)
+        return await ctx.emoji.delete_emoji("hash-demo", keep_desc=False)
+
+    result = asyncio.run(main())
+
+    assert result["keep_desc"] is False
+    assert captured["method"] == "cap.call"
+    assert captured["payload"] == {
+        "capability": "emoji.delete",
+        "args": {"emoji_hash": "hash-demo", "keep_desc": False},
+    }
 
 
 def test_gateway_capability_calls_host_route_message():
