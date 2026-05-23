@@ -624,6 +624,9 @@ async def collect_send_metrics(self, message=None, sent=False, **kwargs):
 | `send_service.after_send` | 发送流程完成后 | 否 | 否 |
 | `maisaka.planner.before_request` | Maisaka 规划器请求模型前 | 否 | 是 |
 | `maisaka.planner.after_response` | Maisaka 收到模型响应后 | 否 | 是 |
+| `maisaka.replyer.before_request` | Maisaka replyer 构建模型请求参数前 | 否 | 是 |
+| `maisaka.replyer.before_model_request` | Maisaka replyer 构造完最终 `messages` 后、请求模型前 | 否 | 是 |
+| `maisaka.replyer.after_response` | Maisaka replyer 收到模型响应后 | 否 | 是 |
 
 **Host 执行顺序**：
 

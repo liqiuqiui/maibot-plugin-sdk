@@ -24,6 +24,7 @@
 - 更新 `README.md`、`docs/guide.md` 与 `docs/migration-guide.md`，补充 `ctx.chat.open_session()` 说明
 - 更新 `README.md` 与 `docs/guide.md`，将能力代理数量同步为 16 个，并补充 Maisaka 能力代理说明
 - 更新 `docs/guide.md`，补充 `ctx.llm.embed()` 与 `ctx.message.get_by_id()` 说明
+- 更新 HookHandler 文档，补充 `maisaka.replyer.before_model_request` 消息改写 Hook
 
 ### 测试
 
