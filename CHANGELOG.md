@@ -14,7 +14,8 @@
 
 ### 变更
 
-- 同步发布版本号到 `2.5.1`，对齐 `pyproject.toml`、`maibot_sdk.__version__`、`uv.lock` 与测试断言
+- `LLMCapability.generate()` 与 `generate_with_tools()` 的 `temperature`、`max_tokens` 默认值改为 `None`，省略时不再覆盖 Host 模型配置
+- 同步发布版本号到 `2.5.2`，对齐 `pyproject.toml`、`maibot_sdk.__version__`、`uv.lock` 与测试断言
 - `LLMCapability` 新增 `ctx.llm.embed()`，`MessageCapability` 新增 `ctx.message.get_by_id()`，补齐 Host 已注册能力
 - Host 新增 `send.forward` 与 `send.hybrid` 能力实现，对齐 SDK 已暴露的发送代理
 
@@ -26,6 +27,7 @@
 
 ### 测试
 
+- 补充 `ctx.llm.generate()` 与 `generate_with_tools()` 省略 `temperature`、`max_tokens` 时不转发这些参数的回归测试
 - 补充 `ctx.chat.open_session()` 参数转发和返回值保留的回归测试
 - 补充 `ctx.maisaka.proactive.trigger()` 与 `ctx.maisaka.context.append()` 参数转发回归测试
 - 补充 `ctx.llm.embed()`、`ctx.message.get_by_id()`、`send.forward` 和 `send.hybrid` 的对齐回归测试

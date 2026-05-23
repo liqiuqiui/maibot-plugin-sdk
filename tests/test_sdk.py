@@ -486,7 +486,46 @@ def test_capability_classes_importable():
 def test_version():
     import maibot_sdk
 
-    assert maibot_sdk.__version__ == "2.5.1"
+    assert maibot_sdk.__version__ == "2.5.2"
+
+
+def test_llm_generate_omits_unset_generation_options():
+    """省略生成参数时由 Host 使用模型配置。"""
+    from maibot_sdk.context import PluginContext
+
+    captured: list[tuple[str, dict[str, Any]]] = []
+
+    async def fake_rpc_call(method: str, plugin_id: str = "", payload: dict | None = None):
+        assert method == "cap.call"
+        assert payload is not None
+        captured.append((payload["capability"], dict(payload["args"])))
+        return {"success": True, "response": "ok", "reasoning": "", "model_name": "m"}
+
+    async def main() -> None:
+        ctx = PluginContext(plugin_id="demo", rpc_call=fake_rpc_call)
+        await ctx.llm.generate("hello", model="utils")
+        await ctx.llm.generate("hello", model="utils", temperature=0.4, max_tokens=4096)
+        await ctx.llm.generate_with_tools("hello", tools=[], model="utils")
+        await ctx.llm.generate_with_tools("hello", tools=[], model="utils", temperature=0.4, max_tokens=4096)
+
+    asyncio.run(main())
+
+    assert captured[0] == (
+        "llm.generate",
+        {"prompt": "hello", "model": "utils"},
+    )
+    assert captured[1] == (
+        "llm.generate",
+        {"prompt": "hello", "model": "utils", "temperature": 0.4, "max_tokens": 4096},
+    )
+    assert captured[2] == (
+        "llm.generate_with_tools",
+        {"prompt": "hello", "tools": [], "model": "utils"},
+    )
+    assert captured[3] == (
+        "llm.generate_with_tools",
+        {"prompt": "hello", "tools": [], "model": "utils", "temperature": 0.4, "max_tokens": 4096},
+    )
 
 
 def test_component_capability_normalizes_lowercase_component_type():

@@ -41,8 +41,8 @@ class LLMCapability:
         self,
         prompt: str | List[Dict[str, Any]],
         model: str = "",
-        temperature: float = 0.7,
-        max_tokens: int = 2000,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
         **kwargs: Any,
     ) -> Dict[str, Any]:
         """生成文本。
@@ -50,20 +50,23 @@ class LLMCapability:
         Args:
             prompt: 提示文本或消息列表。
             model: 模型名称；空字符串表示使用默认模型。
-            temperature: 温度参数。
-            max_tokens: 最大 token 数。
+            temperature: 温度参数；省略时使用 Host 模型配置。
+            max_tokens: 最大 token 数；省略时使用 Host 模型配置。
 
         Returns:
             Dict[str, Any]: 统一的 LLM 响应字典。
         """
-        result = await self._ctx.call_capability(
-            "llm.generate",
+        payload: Dict[str, Any] = dict(kwargs)
+        payload.update(
             prompt=prompt,
             model=model,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            **kwargs,
         )
+        if temperature is not None:
+            payload["temperature"] = temperature
+        if max_tokens is not None:
+            payload["max_tokens"] = max_tokens
+
+        result = await self._ctx.call_capability("llm.generate", **payload)
         if isinstance(result, dict):
             return _normalize_llm_result(result)
         return {"success": False, "response": "", "reasoning": "", "model": ""}
@@ -73,8 +76,8 @@ class LLMCapability:
         prompt: str | List[Dict[str, Any]],
         tools: List[Dict[str, Any]],
         model: str = "",
-        temperature: float = 0.7,
-        max_tokens: int = 2000,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
         **kwargs: Any,
     ) -> Dict[str, Any]:
         """执行带工具调用的文本生成。
@@ -83,21 +86,24 @@ class LLMCapability:
             prompt: 提示文本或消息列表。
             tools: 工具定义列表。
             model: 模型名称。
-            temperature: 温度参数。
-            max_tokens: 最大 token 数。
+            temperature: 温度参数；省略时使用 Host 模型配置。
+            max_tokens: 最大 token 数；省略时使用 Host 模型配置。
 
         Returns:
             Dict[str, Any]: 统一的 LLM 响应字典。
         """
-        result = await self._ctx.call_capability(
-            "llm.generate_with_tools",
+        payload: Dict[str, Any] = dict(kwargs)
+        payload.update(
             prompt=prompt,
             tools=tools,
             model=model,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            **kwargs,
         )
+        if temperature is not None:
+            payload["temperature"] = temperature
+        if max_tokens is not None:
+            payload["max_tokens"] = max_tokens
+
+        result = await self._ctx.call_capability("llm.generate_with_tools", **payload)
         if isinstance(result, dict):
             return _normalize_llm_result(result)
         return {"success": False, "response": "", "reasoning": "", "model": "", "tool_calls": []}

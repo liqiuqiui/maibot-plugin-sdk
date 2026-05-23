@@ -1060,10 +1060,12 @@ llm = self.ctx.llm
 
 | 方法 | 说明 |
 |------|------|
-| `await llm.generate(prompt, model, temperature, max_tokens)` | 文本生成 |
+| `await llm.generate(prompt, model="", temperature=None, max_tokens=None)` | 文本生成 |
 | `await llm.generate_with_tools(prompt, tools, ...)` | 带工具调用的生成 |
 | `await llm.embed(text=..., texts=...)` | 生成文本嵌入向量 |
 | `await llm.get_available_models()` | 获取可用模型列表，返回 `list[str]` |
+
+`temperature` 和 `max_tokens` 省略或传入 `None` 时，会使用 Host 模型配置；只有显式传入具体值时才会覆盖配置。
 
 **generate 返回值**：
 
