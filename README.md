@@ -184,9 +184,28 @@ class PluginSection(PluginConfigBase):
     """插件基础配置。"""
 
     __ui_label__ = "插件设置"
+    __ui_i18n__ = {
+        "en_US": {
+            "title": "Plugin Settings",
+            "description": "Basic plugin settings.",
+        }
+    }
 
     enabled: bool = Field(default=True, description="是否启用插件")
-    greeting: str = Field(default="你好！", description="默认问候语")
+    greeting: str = Field(
+        default="你好！",
+        description="默认问候语",
+        json_schema_extra={
+            "label": "问候语",
+            "placeholder": "请输入默认问候语",
+            "i18n": {
+                "en_US": {
+                    "label": "Greeting",
+                    "placeholder": "Enter the default greeting",
+                }
+            },
+        },
+    )
 
 
 class MyPluginConfig(PluginConfigBase):
@@ -213,6 +232,7 @@ class MyPlugin(MaiBotPlugin):
 - `ctx.gateway.route_message()` / `ctx.gateway.update_state()` 分别对应主程序的入站路由和网关状态上报接口；只有处于 `ready=True` 的消息网关才会被主程序接收入站消息或纳入出站路由。
 - `ctx.api` 支持查询、调用其他插件公开的 API，也支持用 `register_dynamic_api()` / `sync_dynamic_apis()` 动态更新当前插件的 API 集合。
 - 如果插件声明了 `config_model`，Runner 会在注入配置时按模型补齐默认值并构造 `self.config` 强类型对象；Host / WebUI 也可复用 `get_default_config()` 与 `get_webui_config_schema()` 导出的配置元数据。
+- WebUI 配置字段默认使用 `json_schema_extra` 中的 `label`、`hint`、`placeholder` 展示；如需多语言，可在字段元数据中加入 `i18n`，在配置节模型上加入 `__ui_i18n__`。
 - `ctx.send.custom(custom_type, data, stream_id)` 现在会同时发送新旧两套字段别名，便于与不同版本 Host 兼容。
 - `ctx.db.count(model_name, filters)` 直接返回 `int`，SDK 会自动解包 Host 返回的 RPC 结果。
 - 对于 `config.get()`、`chat.*`、`message.*`、`person.*`、`frequency.get_*()`、`tool.get_definitions()` 等接口，SDK 会自动把 Host 返回的单字段包装结果解包为插件更直观的值、列表或字典；兼容层异步 API 也保持相同语义。

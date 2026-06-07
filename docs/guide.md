@@ -225,6 +225,12 @@ class PluginSection(PluginConfigBase):
     """插件基础配置。"""
 
     __ui_label__ = "插件设置"
+    __ui_i18n__ = {
+        "en_US": {
+            "title": "Plugin Settings",
+            "description": "Basic plugin settings.",
+        }
+    }
 
     enabled: bool = Field(default=True, description="是否启用插件")
     greeting: str = Field(
@@ -233,6 +239,16 @@ class PluginSection(PluginConfigBase):
         json_schema_extra={
             "label": "问候语",
             "placeholder": "请输入默认问候语",
+            "i18n": {
+                "en_US": {
+                    "label": "Greeting",
+                    "placeholder": "Enter the default greeting",
+                },
+                "ja_JP": {
+                    "label": "挨拶文",
+                    "placeholder": "デフォルトの挨拶文を入力してください",
+                },
+            },
         },
     )
 
@@ -260,7 +276,9 @@ class GreetingPlugin(MaiBotPlugin):
 说明：
 
 - 运行时的配置来源仍然是插件目录下的 `config.toml`。
+- 配置节标题、排序、图标可通过 `__ui_label__`、`__ui_order__`、`__ui_icon__` 设置；如需按 WebUI 语言切换配置节标题或说明，可设置 `__ui_i18n__`，键名使用 `title` / `description`。
 - `Field(..., json_schema_extra=...)` 可携带 `label`、`hint`、`placeholder`、`x-widget`、`x-icon`、`depends_on`、`depends_value`、`step` 等 UI 元数据。
+- 字段级多语言文本可写入 `json_schema_extra["i18n"]`，结构为 `{locale: {"label": "...", "hint": "...", "placeholder": "..."}}`。WebUI 会优先按当前语言读取 `i18n`，再回退到 `label`、`hint`、`placeholder` 的默认文本。
 - 未声明 `config_model` 时，插件仍然可以只使用 `await self.ctx.config.get(...)` 读取配置。
 
 ---

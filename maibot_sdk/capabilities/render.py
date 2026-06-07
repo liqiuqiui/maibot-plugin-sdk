@@ -32,7 +32,7 @@ class RenderCapability:
         wait_until: str = "load",
         wait_for_selector: str = "",
         wait_for_timeout_ms: int = 0,
-        timeout_ms: int = 0,
+        render_timeout_ms: int = 0,
         allow_network: bool = False,
     ) -> Any:
         """将 HTML 内容渲染为 PNG 图片。
@@ -47,24 +47,31 @@ class RenderCapability:
             wait_until: HTML 写入页面后的等待阶段。
             wait_for_selector: 渲染完成后额外等待出现的选择器。
             wait_for_timeout_ms: 额外静态等待时长（毫秒）。
-            timeout_ms: 本次渲染超时时长（毫秒）。
+            render_timeout_ms: 本次渲染超时时长（毫秒）。
             allow_network: 是否允许页面访问外部网络资源。
 
         Returns:
             Any: 渲染结果，通常包含 ``image_base64``、``mime_type``、``width`` 和 ``height``。
         """
 
-        return await self._ctx.call_capability(
-            "render.html2png",
-            html=html,
-            selector=selector,
-            viewport=viewport or {},
-            device_scale_factor=device_scale_factor,
-            full_page=full_page,
-            omit_background=omit_background,
-            wait_until=wait_until,
-            wait_for_selector=wait_for_selector,
-            wait_for_timeout_ms=wait_for_timeout_ms,
-            timeout_ms=timeout_ms,
-            allow_network=allow_network,
+        capability = "render.html2png"
+        result = await self._ctx.call_host_method(
+            "cap.call",
+            payload={
+                "capability": capability,
+                "args": {
+                    "html": html,
+                    "selector": selector,
+                    "viewport": viewport or {},
+                    "device_scale_factor": device_scale_factor,
+                    "full_page": full_page,
+                    "omit_background": omit_background,
+                    "wait_until": wait_until,
+                    "wait_for_selector": wait_for_selector,
+                    "wait_for_timeout_ms": wait_for_timeout_ms,
+                    "render_timeout_ms": render_timeout_ms,
+                    "allow_network": allow_network,
+                },
+            },
         )
+        return self._ctx._normalize_capability_result(capability, result)

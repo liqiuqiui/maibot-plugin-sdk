@@ -59,6 +59,9 @@ class PluginConfigBase(BaseModel):
     __ui_order__: ClassVar[int] = 0
     """当前配置节在 WebUI 中的排序序号。"""
 
+    __ui_i18n__: ClassVar[dict[str, dict[str, str]]] = {}
+    """当前配置节在 WebUI 中的多语言展示文本。"""
+
 
 def is_plugin_config_class(candidate: Any) -> bool:
     """判断给定对象是否为插件配置模型类。
@@ -279,9 +282,10 @@ def _build_section_schema(
     section_title = getattr(config_class, "__ui_label__", "") or section_name
     section_icon = getattr(config_class, "__ui_icon__", "") or None
     section_order = getattr(config_class, "__ui_order__", fallback_order)
+    section_i18n = _normalize_i18n(getattr(config_class, "__ui_i18n__", None))
     section_doc = (config_class.__doc__ or "").strip()
 
-    return {
+    section_schema: dict[str, Any] = {
         "name": section_name,
         "title": section_title,
         "description": section_doc,
@@ -290,6 +294,9 @@ def _build_section_schema(
         "order": section_order,
         "fields": field_schemas,
     }
+    if section_i18n:
+        section_schema["i18n"] = section_i18n
+    return section_schema
 
 
 def _build_field_schema(
@@ -349,6 +356,8 @@ def _build_field_schema(
         "max_items": json_extra.get("max_items"),
         "example": json_extra.get("example"),
     }
+    if i18n := _normalize_i18n(json_extra.get("i18n")):
+        field_schema["i18n"] = i18n
     return field_schema
 
 
@@ -364,6 +373,31 @@ def _normalize_json_schema_extra(field_info: FieldInfo) -> dict[str, Any]:
 
     json_extra = getattr(field_info, "json_schema_extra", None)
     return dict(json_extra) if isinstance(json_extra, dict) else {}
+
+
+def _normalize_i18n(value: Any) -> dict[str, dict[str, str]] | None:
+    """将 WebUI i18n 元数据归一化为可序列化字典。"""
+
+    if not isinstance(value, Mapping):
+        return None
+
+    normalized: dict[str, dict[str, str]] = {}
+    for locale, locale_entries in value.items():
+        if not isinstance(locale_entries, Mapping):
+            continue
+
+        entries: dict[str, str] = {}
+        for key, text in locale_entries.items():
+            if text is None:
+                continue
+            normalized_text = str(text).strip()
+            if normalized_text:
+                entries[str(key)] = normalized_text
+
+        if entries:
+            normalized[str(locale)] = entries
+
+    return normalized or None
 
 
 def _extract_numeric_constraints(field_info: FieldInfo) -> tuple[float | None, float | None]:
@@ -427,12 +461,16 @@ def _extract_list_item_schema(annotation: Any) -> tuple[str | None, dict[str, di
         item_fields: dict[str, dict[str, Any]] = {}
         default_values = build_plugin_default_config(nested_class)
         for field_name, field_info in nested_class.model_fields.items():
-            item_fields[field_name] = {
+            json_extra = _normalize_json_schema_extra(field_info)
+            item_field: dict[str, Any] = {
                 "type": _map_field_type(field_info.annotation),
-                "label": field_info.description or field_name,
-                "placeholder": "",
+                "label": str(json_extra.get("label") or field_info.description or field_name),
+                "placeholder": _optional_str(json_extra.get("placeholder")) or "",
                 "default": default_values.get(field_name),
             }
+            if i18n := _normalize_i18n(json_extra.get("i18n")):
+                item_field["i18n"] = i18n
+            item_fields[field_name] = item_field
         return "object", item_fields
 
     if item_type in {int, float}:

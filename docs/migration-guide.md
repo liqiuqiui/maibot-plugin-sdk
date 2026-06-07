@@ -900,6 +900,12 @@ class PluginSection(PluginConfigBase):
     """插件基础配置。"""
 
     __ui_label__ = "插件开关"
+    __ui_i18n__ = {
+        "en_US": {
+            "title": "Plugin Switch",
+            "description": "Controls whether the plugin is enabled.",
+        }
+    }
 
     enabled: bool = Field(default=True, description="是否启用")
     config_version: str = Field(default="1.0.0", description="版本")
@@ -916,6 +922,12 @@ class GreetingSection(PluginConfigBase):
         json_schema_extra={
             "label": "问候语",
             "placeholder": "请输入默认问候语",
+            "i18n": {
+                "en_US": {
+                    "label": "Greeting",
+                    "placeholder": "Enter the default greeting",
+                }
+            },
         },
     )
     enable_emoji: bool = Field(default=True, description="是否启用表情")
@@ -970,7 +982,9 @@ other_plugin_config = await self.ctx.config.get_plugin("other_plugin")
 
 - 字段默认值、描述：直接来自 `Field(default=..., description=...)`
 - 分组标题、排序、图标：来自配置节模型的 `__ui_label__`、`__ui_order__`、`__ui_icon__`
+- 分组标题/说明的多语言文本：来自配置节模型的 `__ui_i18n__`，键名使用 `title` / `description`
 - `label`、`hint`、`placeholder`、`icon`、`input_type`、`depends_on`、`depends_value`、`step` 等 UI 元数据：来自 `Field(..., json_schema_extra=...)`
+- 字段级多语言文本：来自 `json_schema_extra["i18n"]`，结构为 `{locale: {"label": "...", "hint": "...", "placeholder": "..."}}`
 - `Literal[...]` 可自动生成 `choices`
 - `list[PluginConfigBase]` 可生成对象数组字段 Schema
 

@@ -25,8 +25,8 @@ from maibot_sdk.capabilities.render import RenderCapability
 from maibot_sdk.capabilities.send import SendCapability
 from maibot_sdk.capabilities.tool import ToolCapability
 
-# RPC 调用函数类型: async (method, plugin_id, payload) -> result
-RpcCallFn = Callable[[str, str, dict[str, Any] | None], Awaitable[Any]]
+# RPC 调用函数类型: async (method, plugin_id, payload, timeout_ms=None) -> result
+RpcCallFn = Callable[..., Awaitable[Any]]
 
 _CAPABILITY_RESULT_KEYS: dict[str, str] = {
     "api.call": "result",
@@ -169,6 +169,7 @@ class PluginContext:
         *,
         plugin_id: str = "",
         payload: dict[str, Any] | None = None,
+        timeout_ms: int | None = None,
     ) -> Any:
         """调用 Host 暴露的原始 RPC 方法。
 
@@ -176,6 +177,7 @@ class PluginContext:
             method: Host 侧 RPC 方法名。
             plugin_id: 可选的目标插件 ID；Runner 端会强制绑定为当前插件身份。
             payload: 原始 RPC 载荷。
+            timeout_ms: 可选的本次 RPC 超时时间，单位毫秒。
 
         Returns:
             Any: Host 方法返回的业务数据。
@@ -193,13 +195,26 @@ class PluginContext:
                 "请优先使用 self.ctx 上的能力代理。"
             )
 
-        return await self._rpc_call(normalized_method, plugin_id or self._plugin_id, payload)
+        if timeout_ms is None:
+            return await self._rpc_call(normalized_method, plugin_id or self._plugin_id, payload)
+        return await self._rpc_call(
+            normalized_method,
+            plugin_id or self._plugin_id,
+            payload,
+            timeout_ms=timeout_ms,
+        )
 
-    async def call_capability(self, capability: str, **kwargs: Any) -> Any:
+    async def call_capability(
+        self,
+        capability: str,
+        timeout_ms: int | None = None,
+        **kwargs: Any,
+    ) -> Any:
         """调用一项能力。
 
         Args:
             capability: 能力名称，如 ``send.text``、``db.query``。
+            timeout_ms: 可选的本次能力 RPC 超时时间，单位毫秒。
             **kwargs: 能力参数。
 
         Returns:
@@ -211,6 +226,7 @@ class PluginContext:
                 "capability": capability,
                 "args": kwargs,
             },
+            timeout_ms=timeout_ms,
         )
         return self._normalize_capability_result(capability, result)
 

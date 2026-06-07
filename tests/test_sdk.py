@@ -25,7 +25,7 @@ from maibot_sdk import (
     Tool,
     WorkflowStep,
 )
-from maibot_sdk.config import PluginConfigVersionError
+from maibot_sdk.config import PluginConfigVersionError, generate_plugin_config_schema
 from maibot_sdk.messages import MaiMessages
 from maibot_sdk.types import (
     ActivationType,
@@ -120,9 +120,31 @@ class DemoPluginSection(PluginConfigBase):
     """插件基础配置节。"""
 
     __ui_label__ = "插件设置"
+    __ui_i18n__ = {
+        "en_US": {
+            "title": "Plugin Settings",
+            "description": "Basic plugin settings.",
+        }
+    }
 
     config_version: str = Field(default="2.0.0", description="配置版本号")
-    enabled: bool = Field(default=True, description="是否启用插件")
+    enabled: bool = Field(
+        default=True,
+        description="是否启用插件",
+        json_schema_extra={
+            "label": "启用插件",
+            "hint": "关闭后插件不会执行主动功能。",
+            "i18n": {
+                "en_US": {
+                    "label": "Enable plugin",
+                    "hint": "When disabled, the plugin will not run proactive features.",
+                },
+                "ja_JP": {
+                    "label": "プラグインを有効化",
+                },
+            },
+        },
+    )
     retry_count: int = Field(default=3, description="最大重试次数", ge=0)
 
 
@@ -140,6 +162,31 @@ class DemoPluginConfig(PluginConfigBase):
 
     plugin: DemoPluginSection = Field(default_factory=DemoPluginSection)
     feature: DemoFeatureSection = Field(default_factory=DemoFeatureSection)
+
+
+class DemoObjectItemConfig(PluginConfigBase):
+    """对象列表项配置。"""
+
+    name: str = Field(
+        default="demo",
+        description="名称",
+        json_schema_extra={
+            "label": "名称",
+            "placeholder": "请输入名称",
+            "i18n": {
+                "en_US": {
+                    "label": "Name",
+                    "placeholder": "Enter a name",
+                }
+            },
+        },
+    )
+
+
+class DemoListPluginConfig(PluginConfigBase):
+    """对象列表配置。"""
+
+    items: list[DemoObjectItemConfig] = Field(default_factory=list)
 
 
 class ConfigurablePlugin(MaiBotPlugin):
@@ -335,7 +382,33 @@ def test_plugin_config_schema_generation() -> None:
     assert schema["plugin_id"] == "demo.plugin"
     assert schema["plugin_info"]["name"] == "演示插件"
     assert schema["sections"]["plugin"]["fields"]["enabled"]["type"] == "boolean"
+    assert schema["sections"]["plugin"]["i18n"]["en_US"]["title"] == "Plugin Settings"
+    assert schema["sections"]["plugin"]["fields"]["enabled"]["label"] == "启用插件"
+    assert schema["sections"]["plugin"]["fields"]["enabled"]["hint"] == "关闭后插件不会执行主动功能。"
+    assert schema["sections"]["plugin"]["fields"]["enabled"]["i18n"]["en_US"]["label"] == "Enable plugin"
+    assert (
+        schema["sections"]["plugin"]["fields"]["enabled"]["i18n"]["en_US"]["hint"]
+        == "When disabled, the plugin will not run proactive features."
+    )
+    assert schema["sections"]["plugin"]["fields"]["enabled"]["i18n"]["ja_JP"]["label"] == "プラグインを有効化"
     assert schema["sections"]["feature"]["fields"]["tags"]["type"] == "array"
+
+
+def test_plugin_config_schema_generation_preserves_list_item_i18n() -> None:
+    """对象列表子字段的 WebUI 多语言元数据应保留。"""
+
+    generated_schema = ConfigurablePlugin.build_config_schema()
+    assert generated_schema["sections"]["plugin"]["fields"]["enabled"]["i18n"]["en_US"]["label"] == "Enable plugin"
+
+    list_schema = generate_plugin_config_schema(
+        DemoListPluginConfig,
+        plugin_id="demo.list",
+    )
+    item_field = list_schema["sections"]["general"]["fields"]["items"]["item_fields"]["name"]
+    assert item_field["label"] == "名称"
+    assert item_field["placeholder"] == "请输入名称"
+    assert item_field["i18n"]["en_US"]["label"] == "Name"
+    assert item_field["i18n"]["en_US"]["placeholder"] == "Enter a name"
 
 
 def test_plugin_set_config_builds_typed_model() -> None:
@@ -486,7 +559,7 @@ def test_capability_classes_importable():
 def test_version():
     import maibot_sdk
 
-    assert maibot_sdk.__version__ == "2.5.2"
+    assert maibot_sdk.__version__ == "2.5.3"
 
 
 def test_llm_generate_omits_unset_generation_options():
@@ -935,6 +1008,81 @@ def test_context_blocks_internal_host_methods() -> None:
             await ctx.call_host_method("plugin.bootstrap")
 
     asyncio.run(main())
+
+
+def test_call_capability_forwards_rpc_timeout_separately() -> None:
+    """timeout_ms 应作为 RPC 超时传递，而不是进入能力参数。"""
+    from maibot_sdk.context import PluginContext
+
+    captured: dict[str, object] = {}
+
+    async def fake_rpc_call(
+        method: str,
+        plugin_id: str = "",
+        payload: dict[str, object] | None = None,
+        timeout_ms: int | None = None,
+    ) -> dict[str, object]:
+        """捕获能力调用的 RPC 超时和业务载荷。"""
+
+        captured["method"] = method
+        captured["plugin_id"] = plugin_id
+        captured["payload"] = payload
+        captured["timeout_ms"] = timeout_ms
+        return {"success": True, "value": "ok"}
+
+    async def main() -> object:
+        """发起一次带自定义 RPC 超时的能力调用。"""
+
+        ctx = PluginContext(plugin_id="demo", rpc_call=fake_rpc_call)
+        return await ctx.call_capability("config.get", key="name", timeout_ms=42000)
+
+    assert asyncio.run(main()) == "ok"
+    assert captured["method"] == "cap.call"
+    assert captured["plugin_id"] == "demo"
+    assert captured["timeout_ms"] == 42000
+    assert captured["payload"] == {
+        "capability": "config.get",
+        "args": {"key": "name"},
+    }
+
+
+def test_render_timeout_uses_render_timeout_ms_argument() -> None:
+    """render.html2png 的 render_timeout_ms 应作为渲染参数传给 Host。"""
+    from maibot_sdk.context import PluginContext
+
+    captured: dict[str, object] = {}
+
+    async def fake_rpc_call(
+        method: str,
+        plugin_id: str = "",
+        payload: dict[str, object] | None = None,
+        timeout_ms: int | None = None,
+    ) -> dict[str, object]:
+        """捕获渲染能力调用。"""
+
+        captured["method"] = method
+        captured["plugin_id"] = plugin_id
+        captured["payload"] = payload
+        captured["timeout_ms"] = timeout_ms
+        return {"success": True, "result": {"image_base64": "ok"}}
+
+    async def main() -> object:
+        """发起一次带业务超时的渲染调用。"""
+
+        ctx = PluginContext(plugin_id="demo", rpc_call=fake_rpc_call)
+        return await ctx.render.html2png("<div>ok</div>", render_timeout_ms=12000)
+
+    assert asyncio.run(main()) == {"image_base64": "ok"}
+    assert captured["method"] == "cap.call"
+    assert captured["plugin_id"] == "demo"
+    assert captured["timeout_ms"] is None
+    assert captured["payload"] is not None
+    payload = captured["payload"]
+    assert isinstance(payload, dict)
+    assert payload["capability"] == "render.html2png"
+    args = payload["args"]
+    assert isinstance(args, dict)
+    assert args["render_timeout_ms"] == 12000
 
 
 def test_dynamic_api_helpers_can_sync_and_dispatch() -> None:
