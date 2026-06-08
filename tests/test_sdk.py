@@ -559,7 +559,7 @@ def test_capability_classes_importable():
 def test_version():
     import maibot_sdk
 
-    assert maibot_sdk.__version__ == "2.5.3"
+    assert maibot_sdk.__version__ == "2.5.4"
 
 
 def test_llm_generate_omits_unset_generation_options():
@@ -599,6 +599,38 @@ def test_llm_generate_omits_unset_generation_options():
         "llm.generate_with_tools",
         {"prompt": "hello", "tools": [], "model": "utils", "temperature": 0.4, "max_tokens": 4096},
     )
+
+
+def test_llm_transcribe_audio_encodes_bytes():
+    """ASR 便捷方法应支持直接传入音频字节。"""
+    from maibot_sdk.context import PluginContext
+
+    captured: list[tuple[str, dict[str, Any]]] = []
+
+    async def fake_rpc_call(method: str, plugin_id: str = "", payload: dict | None = None):
+        assert method == "cap.call"
+        assert payload is not None
+        captured.append((payload["capability"], dict(payload["args"])))
+        return {"success": True, "text": "转写结果", "content": "转写结果"}
+
+    async def main() -> None:
+        ctx = PluginContext(plugin_id="demo", rpc_call=fake_rpc_call)
+        result = await ctx.llm.transcribe_audio(b"voice-bytes")
+        assert result["text"] == "转写结果"
+
+    asyncio.run(main())
+
+    assert captured == [
+        (
+            "llm.transcribe_audio",
+            {
+                "audio_base64": "dm9pY2UtYnl0ZXM=",
+                "task_name": "voice",
+                "model": "",
+                "model_name": "",
+            },
+        )
+    ]
 
 
 def test_component_capability_normalizes_lowercase_component_type():

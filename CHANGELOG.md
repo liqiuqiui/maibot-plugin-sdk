@@ -10,13 +10,14 @@
 ### 新增
 
 - `ChatCapability` 新增 `ctx.chat.open_session()`，支持通过 SDK 直接调用 Host 的 `chat.open_session` 能力打开或创建聊天流
+- `LLMCapability` 新增 `ctx.llm.transcribe_audio()`，支持插件调用 Host 当前 `voice` 任务执行 ASR 语音识别
 - 新增 `MaisakaCapability` 与 `ctx.maisaka` 能力代理，支持 `ctx.maisaka.proactive.trigger()` 触发 Maisaka 主动任务，以及 `ctx.maisaka.context.append()` 追加 Maisaka 上下文消息
 - 插件配置 WebUI Schema 支持透传字段级 `json_schema_extra["i18n"]`，并新增配置节级 `__ui_i18n__`
 
 ### 变更
 
 - `LLMCapability.generate()` 与 `generate_with_tools()` 的 `temperature`、`max_tokens` 默认值改为 `None`，省略时不再覆盖 Host 模型配置
-- 同步发布版本号到 `2.5.3`，对齐 `pyproject.toml`、`maibot_sdk.__version__`、`uv.lock` 与测试断言
+- 同步发布版本号到 `2.5.4`，对齐 `pyproject.toml`、`maibot_sdk.__version__`、`uv.lock` 与测试断言
 - `LLMCapability` 新增 `ctx.llm.embed()`，`MessageCapability` 新增 `ctx.message.get_by_id()`，补齐 Host 已注册能力
 - Host 新增 `send.forward` 与 `send.hybrid` 能力实现，对齐 SDK 已暴露的发送代理
 
@@ -25,6 +26,7 @@
 - 更新 `README.md`、`docs/guide.md` 与 `docs/migration-guide.md`，补充 `ctx.chat.open_session()` 说明
 - 更新 `README.md` 与 `docs/guide.md`，将能力代理数量同步为 16 个，并补充 Maisaka 能力代理说明
 - 更新 `docs/guide.md`，补充 `ctx.llm.embed()` 与 `ctx.message.get_by_id()` 说明
+- 更新 `docs/guide.md`，补充 `ctx.llm.transcribe_audio()` 的 ASR 调用说明与示例
 - 更新 `README.md`、`docs/guide.md` 与 `docs/migration-guide.md`，补充配置项与配置节多语言元数据写法
 - 更新 HookHandler 文档，补充 `maisaka.replyer.before_model_request` 消息改写 Hook
 
@@ -34,6 +36,7 @@
 - 补充 `ctx.chat.open_session()` 参数转发和返回值保留的回归测试
 - 补充 `ctx.maisaka.proactive.trigger()` 与 `ctx.maisaka.context.append()` 参数转发回归测试
 - 补充 `ctx.llm.embed()`、`ctx.message.get_by_id()`、`send.forward` 和 `send.hybrid` 的对齐回归测试
+- 补充 `ctx.llm.transcribe_audio()` 音频字节编码和参数转发回归测试
 - 补充配置字段、配置节与对象列表子字段 `i18n` 透传的回归测试
 
 

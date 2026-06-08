@@ -2,11 +2,13 @@
 
 对应旧系统的 llm_api，所有方法底层转发为 cap.call RPC。
 """
-# ruff: noqa: UP006,UP035
+# ruff: noqa: I001,UP006,UP035
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, List
+
+import base64
 
 if TYPE_CHECKING:
     from maibot_sdk.context import PluginContext
@@ -145,6 +147,52 @@ class LLMCapability:
             max_concurrent=max_concurrent,
             **kwargs,
         )
+        if isinstance(result, dict):
+            return result
+        return {}
+
+    async def transcribe_audio(
+        self,
+        audio: bytes | str | None = None,
+        *,
+        audio_base64: str = "",
+        voice_base64: str = "",
+        task_name: str = "voice",
+        model: str = "",
+        model_name: str = "",
+        **kwargs: Any,
+    ) -> Dict[str, Any]:
+        """调用 Host 的 ASR 语音识别模型。
+
+        Args:
+            audio: 音频字节，或已编码的 Base64/Data URL 字符串。
+            audio_base64: 已编码的音频 Base64。
+            voice_base64: ``audio_base64`` 的兼容别名。
+            task_name: 模型任务名，默认使用 Host 的 ``voice`` 任务。
+            model: 兼容 Host 的模型任务别名。
+            model_name: 兼容 Host 的模型任务别名。
+            **kwargs: Host 支持的额外参数。
+
+        Returns:
+            Dict[str, Any]: Host 返回的识别结果，通常包含 ``success``、``text`` 和 ``content``。
+        """
+
+        payload: Dict[str, Any] = dict(kwargs)
+        if isinstance(audio, bytes):
+            payload["audio_base64"] = base64.b64encode(audio).decode("utf-8")
+        elif isinstance(audio, str) and audio.strip():
+            payload["audio_base64"] = audio.strip()
+        elif audio_base64:
+            payload["audio_base64"] = audio_base64
+        elif voice_base64:
+            payload["voice_base64"] = voice_base64
+
+        payload.update(
+            task_name=task_name,
+            model=model,
+            model_name=model_name,
+        )
+        result = await self._ctx.call_capability("llm.transcribe_audio", **payload)
         if isinstance(result, dict):
             return result
         return {}
