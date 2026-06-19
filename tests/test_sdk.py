@@ -2,7 +2,7 @@
 
 # ruff: noqa: I001
 
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 import asyncio
 
@@ -187,6 +187,31 @@ class DemoListPluginConfig(PluginConfigBase):
     """对象列表配置。"""
 
     items: list[DemoObjectItemConfig] = Field(default_factory=list)
+
+
+class DemoMultiSelectItemConfig(PluginConfigBase):
+    """带多选字段的对象列表项配置。"""
+
+    push_format: list[Literal["image", "text"]] = Field(
+        default_factory=list,
+        description="推送格式",
+        json_schema_extra={
+            "label": "推送格式",
+        },
+    )
+
+
+class DemoMultiSelectPluginConfig(PluginConfigBase):
+    """带多选字段的配置。"""
+
+    push_format: list[Literal["image", "text"]] = Field(
+        default_factory=list,
+        description="推送格式",
+        json_schema_extra={
+            "label": "推送格式",
+        },
+    )
+    items: list[DemoMultiSelectItemConfig] = Field(default_factory=list)
 
 
 class ConfigurablePlugin(MaiBotPlugin):
@@ -409,6 +434,36 @@ def test_plugin_config_schema_generation_preserves_list_item_i18n() -> None:
     assert item_field["placeholder"] == "请输入名称"
     assert item_field["i18n"]["en_US"]["label"] == "Name"
     assert item_field["i18n"]["en_US"]["placeholder"] == "Enter a name"
+
+
+def test_plugin_config_schema_generation_supports_list_literal_multiselect() -> None:
+    """list[Literal[...]] 应生成带 multiple 的 select 字段。"""
+
+    schema = generate_plugin_config_schema(
+        DemoMultiSelectPluginConfig,
+        plugin_id="demo.multiselect",
+    )
+
+    field_schema = schema["sections"]["general"]["fields"]["push_format"]
+    assert field_schema["type"] == "select"
+    assert field_schema["choices"] == ["image", "text"]
+    assert field_schema["multiple"] is True
+    assert field_schema["default"] == []
+
+
+def test_plugin_config_schema_generation_supports_list_literal_in_object_items() -> None:
+    """对象数组子字段中的 list[Literal[...]] 应生成带 multiple 的 select 字段。"""
+
+    schema = generate_plugin_config_schema(
+        DemoMultiSelectPluginConfig,
+        plugin_id="demo.multiselect",
+    )
+
+    item_field = schema["sections"]["general"]["fields"]["items"]["item_fields"]["push_format"]
+    assert item_field["type"] == "select"
+    assert item_field["choices"] == ["image", "text"]
+    assert item_field["multiple"] is True
+    assert item_field["default"] == []
 
 
 def test_plugin_set_config_builds_typed_model() -> None:
