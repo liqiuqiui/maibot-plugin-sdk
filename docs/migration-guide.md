@@ -986,6 +986,7 @@ other_plugin_config = await self.ctx.config.get_plugin("other_plugin")
 - `label`、`hint`、`placeholder`、`icon`、`input_type`、`depends_on`、`depends_value`、`step` 等 UI 元数据：来自 `Field(..., json_schema_extra=...)`
 - 字段级多语言文本：来自 `json_schema_extra["i18n"]`，结构为 `{locale: {"label": "...", "hint": "...", "placeholder": "..."}}`
 - `Literal[...]` 可自动生成 `choices`
+- `list[Literal[...]]` 会生成 `type: "select"` 且带 `multiple: true` 的多选字段
 - `list[PluginConfigBase]` 可生成对象数组字段 Schema
 
 示例：
@@ -1011,6 +1012,15 @@ timeout: int = Field(
         "min": 1,
         "max": 120,
         "step": 1,
+    },
+)
+
+push_format: list[Literal["image", "text"]] = Field(
+    default_factory=list,
+    description="推送格式",
+    json_schema_extra={
+        "label": "推送格式",
+        "hint": "可同时选择多个输出格式",
     },
 )
 ```

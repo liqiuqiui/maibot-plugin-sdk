@@ -12,7 +12,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any, ClassVar, TypeVar, cast, get_args, get_origin
+from typing import Any, ClassVar, Literal, TypeVar, cast, get_args, get_origin
 
 import inspect
 
@@ -318,11 +318,15 @@ def _build_field_schema(
         Dict[str, Any]: 单个字段的 Schema。
     """
 
+    select_choices, is_multiple_select = _extract_select_choices(field_info.annotation)
     field_type = _map_field_type(field_info.annotation)
     json_extra = _normalize_json_schema_extra(field_info)
     ui_type = str(json_extra.get("x-widget") or _default_ui_type(field_type))
     icon_name = _optional_str(json_extra.get("x-icon"))
-    item_type, item_fields = _extract_list_item_schema(field_info.annotation)
+    if is_multiple_select:
+        item_type, item_fields = None, None
+    else:
+        item_type, item_fields = _extract_list_item_schema(field_info.annotation)
     min_value, max_value = _extract_numeric_constraints(field_info)
 
     field_schema: dict[str, Any] = {
@@ -331,7 +335,7 @@ def _build_field_schema(
         "default": default_value,
         "description": field_info.description or "",
         "required": field_info.is_required(),
-        "choices": _extract_literal_choices(field_info.annotation),
+        "choices": select_choices,
         "min": min_value,
         "max": max_value,
         "step": json_extra.get("step"),
@@ -356,6 +360,8 @@ def _build_field_schema(
         "max_items": json_extra.get("max_items"),
         "example": json_extra.get("example"),
     }
+    if is_multiple_select:
+        field_schema["multiple"] = True
     if i18n := _normalize_i18n(json_extra.get("i18n")):
         field_schema["i18n"] = i18n
     return field_schema
@@ -437,6 +443,27 @@ def _extract_literal_choices(annotation: Any) -> list[Any] | None:
     return choices or None
 
 
+def _extract_select_choices(annotation: Any) -> tuple[list[Any] | None, bool]:
+    """提取 select 字段的可选值及是否为多选。"""
+
+    literal_choices = _extract_literal_choices(annotation)
+    if literal_choices is not None:
+        return literal_choices, False
+
+    origin = get_origin(annotation)
+    if origin is not list:
+        return None, False
+
+    args = get_args(annotation)
+    if not args:
+        return None, False
+
+    item_choices = _extract_literal_choices(args[0])
+    if item_choices is None:
+        return None, False
+    return item_choices, True
+
+
 def _extract_list_item_schema(annotation: Any) -> tuple[str | None, dict[str, dict[str, Any]] | None]:
     """提取列表字段的元素类型描述。
 
@@ -462,12 +489,17 @@ def _extract_list_item_schema(annotation: Any) -> tuple[str | None, dict[str, di
         default_values = build_plugin_default_config(nested_class)
         for field_name, field_info in nested_class.model_fields.items():
             json_extra = _normalize_json_schema_extra(field_info)
+            item_choices, item_multiple = _extract_select_choices(field_info.annotation)
             item_field: dict[str, Any] = {
                 "type": _map_field_type(field_info.annotation),
                 "label": str(json_extra.get("label") or field_info.description or field_name),
                 "placeholder": _optional_str(json_extra.get("placeholder")) or "",
                 "default": default_values.get(field_name),
             }
+            if item_choices is not None:
+                item_field["choices"] = item_choices
+            if item_multiple:
+                item_field["multiple"] = True
             if i18n := _normalize_i18n(json_extra.get("i18n")):
                 item_field["i18n"] = i18n
             item_fields[field_name] = item_field
@@ -492,11 +524,14 @@ def _map_field_type(annotation: Any) -> str:
 
     origin = get_origin(annotation)
 
-    if origin in {list, list}:
+    if origin is list:
+        args = get_args(annotation)
+        if len(args) == 1 and get_origin(args[0]) is Literal:
+            return "select"
         return "array"
-    if origin in {dict, dict}:
+    if origin is dict:
         return "object"
-    if str(origin) == "typing.Literal":
+    if origin is Literal:
         return "select"
     if is_plugin_config_class(annotation):
         return "object"

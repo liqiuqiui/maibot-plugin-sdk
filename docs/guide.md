@@ -278,6 +278,7 @@ class GreetingPlugin(MaiBotPlugin):
 - 运行时的配置来源仍然是插件目录下的 `config.toml`。
 - 配置节标题、排序、图标可通过 `__ui_label__`、`__ui_order__`、`__ui_icon__` 设置；如需按 WebUI 语言切换配置节标题或说明，可设置 `__ui_i18n__`，键名使用 `title` / `description`。
 - `Field(..., json_schema_extra=...)` 可携带 `label`、`hint`、`placeholder`、`x-widget`、`x-icon`、`depends_on`、`depends_value`、`step` 等 UI 元数据。
+- `Literal[...]` 会自动生成 `choices`；若字段类型为 `list[Literal[...]]`，生成的 Schema 会继续使用 `type: "select"`，并额外输出 `multiple: true`。
 - 字段级多语言文本可写入 `json_schema_extra["i18n"]`，结构为 `{locale: {"label": "...", "hint": "...", "placeholder": "..."}}`。WebUI 会优先按当前语言读取 `i18n`，再回退到 `label`、`hint`、`placeholder` 的默认文本。
 - 未声明 `config_model` 时，插件仍然可以只使用 `await self.ctx.config.get(...)` 读取配置。
 
