@@ -1,11 +1,13 @@
 """插件运行时上下文
 
-为插件提供能力代理接口，所有能力调用通过上下文发起。
+为插件提供能力代理接口、标准路径和日志入口，所有能力调用通过上下文发起。
 PluginContext 由 Runner SDK Runtime 在插件加载时注入。
 """
 
 import logging as stdlib_logging
 from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from maibot_sdk.capabilities.api import APICapability
@@ -23,6 +25,7 @@ from maibot_sdk.capabilities.message import MessageCapability
 from maibot_sdk.capabilities.person import PersonCapability
 from maibot_sdk.capabilities.render import RenderCapability
 from maibot_sdk.capabilities.send import SendCapability
+from maibot_sdk.capabilities.statistics import StatisticsCapability
 from maibot_sdk.capabilities.tool import ToolCapability
 
 # RPC 调用函数类型: async (method, plugin_id, payload, timeout_ms=None) -> result
@@ -69,6 +72,13 @@ _CAPABILITY_RESULT_KEYS: dict[str, str] = {
     "person.get_id_by_name": "person_id",
     "person.get_value": "value",
     "render.html2png": "result",
+    "statistics.local.message_trend": "series",
+    "statistics.local.model_trend": "series",
+    "statistics.local.models": "models",
+    "statistics.local.online_time_trend": "series",
+    "statistics.local.token_distribution": "distribution",
+    "statistics.local.token_trend": "series",
+    "statistics.local.tool_trend": "series",
     "tool.get_definitions": "tools",
 }
 
@@ -92,6 +102,14 @@ _ALLOWED_RAW_HOST_METHODS = frozenset(
 )
 
 
+@dataclass(frozen=True)
+class PluginPaths:
+    """插件运行时被授予的标准路径。"""
+
+    data_dir: Path
+    runtime_dir: Path
+
+
 class PluginContext:
     """插件运行时上下文
 
@@ -107,16 +125,21 @@ class PluginContext:
         logger = logging.getLogger(__name__)   # 名称不以 plugin. 开头也能正常工作
     """
 
-    def __init__(self, plugin_id: str, rpc_call: RpcCallFn | None = None) -> None:
+    def __init__(self, plugin_id: str, rpc_call: RpcCallFn | None = None, paths: PluginPaths | None = None) -> None:
         """初始化插件运行时上下文。
 
         Args:
             plugin_id: 当前插件 ID。
             rpc_call: RPC 调用函数，由 Runner 注入。
+            paths: 插件运行时路径，由 Runner 按插件 ID 分配。
         """
         self._plugin_id: str = plugin_id
         self._rpc_call: RpcCallFn | None = rpc_call
         self._logger: stdlib_logging.Logger | None = None
+        self.paths: PluginPaths = paths or PluginPaths(
+            data_dir=Path("data") / "plugins" / plugin_id,
+            runtime_dir=Path("temp") / "plugins" / plugin_id,
+        )
         current_ctx: Any = self
 
         # 能力代理
@@ -135,6 +158,7 @@ class PluginContext:
         self.render: RenderCapability = RenderCapability(current_ctx)
         self.knowledge: KnowledgeCapability = KnowledgeCapability(current_ctx)
         self.tool: ToolCapability = ToolCapability(current_ctx)
+        self.statistics: StatisticsCapability = StatisticsCapability(current_ctx)
         self.maisaka: MaisakaCapability = MaisakaCapability(current_ctx)
 
     @property

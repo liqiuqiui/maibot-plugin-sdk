@@ -2,7 +2,7 @@
 
 MaiBot 插件开发的唯一依赖。提供插件基类、配置模型、组件装饰器、能力代理和类型定义。
 
-> **完整文档**：[插件开发指南](docs/guide.md) — 覆盖 16 种能力代理、日志接口、7 种正式声明装饰器、1 种兼容装饰器、配置模型、消息模型、生命周期、调试与发布。
+> **完整文档**：[插件开发指南](docs/guide.md) — 覆盖 17 种能力代理、日志接口、7 种正式声明装饰器、1 种兼容装饰器、配置模型、消息模型、生命周期、调试与发布。
 >
 > **Breaking change（2.0.0）**：`WorkflowStep` 已移除并重命名为 `HookHandler`。组件协议值统一为大写（如 `ACTION`、`EVENT_HANDLER`）。顶层仍保留 `WorkflowStep` 名称，但只会在运行时抛出明确错误，不再提供兼容映射。
 
@@ -86,7 +86,9 @@ def create_plugin():
 | `ctx.render` | 将 HTML 渲染为 PNG 图片 |
 | `ctx.knowledge` | LPMM 知识库搜索 |
 | `ctx.tool` | LLM 工具定义查询 |
+| `ctx.statistics` | 本机统计与计费数据读取 |
 | `ctx.maisaka` | Maisaka 上下文追加与主动任务 |
+| `ctx.paths` | 插件持久化数据目录与非持久运行时目录 |
 | `ctx.logger` | 插件日志（标准 logging.Logger） |
 
 ## 消息网关插件
@@ -228,7 +230,8 @@ class MyPlugin(MaiBotPlugin):
 - Runner 会在调用 `on_load()` 之前先注入 `PluginContext` 并完成 capability bootstrap，因此插件可以在 `on_load()` 中直接调用 `self.ctx.send.*`、`self.ctx.db.*` 等能力，无需自行等待“注册完成”信号。
 - SDK 插件必须实现 `on_load()`、`on_unload()` 和 `on_config_update(scope, config_data, version)` 三个生命周期方法；未实现时 Runner 会拒绝加载。
 - `HookHandler` 现在基于命名 Hook 点注册，不再依赖固定的 workflow stage；插件通过 `hook`、`mode`、`order` 描述自己的订阅位置。
-- `PluginContext` 当前暴露 16 个能力代理：`api`、`gateway`、`send`、`db`、`llm`、`config`、`emoji`、`message`、`frequency`、`component`、`chat`、`person`、`render`、`knowledge`、`tool`、`maisaka`。
+- `PluginContext` 暴露能力代理与运行时辅助对象：`api`、`gateway`、`send`、`db`、`llm`、`config`、`emoji`、`message`、`frequency`、`component`、`chat`、`person`、`render`、`knowledge`、`tool`、`statistics`、`maisaka`、`paths`。
+- 插件需要保存文件时优先使用 `ctx.paths.data_dir`；缓存、下载暂存或渲染中间产物使用 `ctx.paths.runtime_dir`，不要自行拼接主程序根目录或插件源码目录。
 - `ctx.gateway.route_message()` / `ctx.gateway.update_state()` 分别对应主程序的入站路由和网关状态上报接口；只有处于 `ready=True` 的消息网关才会被主程序接收入站消息或纳入出站路由。
 - `ctx.api` 支持查询、调用其他插件公开的 API，也支持用 `register_dynamic_api()` / `sync_dynamic_apis()` 动态更新当前插件的 API 集合。
 - 如果插件声明了 `config_model`，Runner 会在注入配置时按模型补齐默认值并构造 `self.config` 强类型对象；Host / WebUI 也可复用 `get_default_config()` 与 `get_webui_config_schema()` 导出的配置元数据。

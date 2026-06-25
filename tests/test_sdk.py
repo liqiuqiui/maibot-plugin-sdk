@@ -22,6 +22,7 @@ from maibot_sdk import (
     MaiBotPlugin,
     MessageGateway,
     PluginConfigBase,
+    PluginPaths,
     Tool,
     WorkflowStep,
 )
@@ -369,6 +370,8 @@ def test_context_has_all_capabilities():
         "render",
         "knowledge",
         "tool",
+        "statistics",
+        "paths",
         "logger",
     ]
     for attr in expected:
@@ -379,6 +382,21 @@ def test_context_has_all_capabilities():
 
     assert isinstance(ctx.logger, logging.Logger)
     assert ctx.logger.name == "plugin.__test__"
+
+
+def test_context_accepts_runtime_paths(tmp_path):
+    """PluginContext 应暴露 Runner 授予的标准插件路径。"""
+    from maibot_sdk.context import PluginContext
+
+    paths = PluginPaths(
+        data_dir=tmp_path / "data" / "plugins" / "demo.plugin",
+        runtime_dir=tmp_path / "temp" / "plugins" / "demo.plugin",
+    )
+    ctx = PluginContext(plugin_id="demo.plugin", rpc_call=None, paths=paths)
+
+    assert ctx.paths is paths
+    assert ctx.paths.data_dir == paths.data_dir
+    assert ctx.paths.runtime_dir == paths.runtime_dir
 
 
 def test_plugin_default_config_generation() -> None:
@@ -586,6 +604,7 @@ def test_capability_classes_importable():
     from maibot_sdk.capabilities.person import PersonCapability
     from maibot_sdk.capabilities.render import RenderCapability
     from maibot_sdk.capabilities.send import SendCapability
+    from maibot_sdk.capabilities.statistics import StatisticsCapability
     from maibot_sdk.capabilities.tool import ToolCapability
 
     # LoggingCapability 已移除，logging.py 模块仍可 import 但不再导出类
@@ -606,6 +625,7 @@ def test_capability_classes_importable():
             PersonCapability,
             RenderCapability,
             SendCapability,
+            StatisticsCapability,
             ToolCapability,
         ]
     )
@@ -614,7 +634,7 @@ def test_capability_classes_importable():
 def test_version():
     import maibot_sdk
 
-    assert maibot_sdk.__version__ == "2.5.4"
+    assert maibot_sdk.__version__ == "2.6.0"
 
 
 def test_llm_generate_omits_unset_generation_options():
@@ -894,6 +914,66 @@ def test_render_capability_unwraps_result() -> None:
     assert captured["viewport"] == {"width": 1200, "height": 800}
     assert captured["device_scale_factor"] == 1.5
     assert captured["allow_network"] is True
+
+
+def test_statistics_capability_forwards_arguments_and_unwraps_results() -> None:
+    """ctx.statistics.local 应转发本机统计参数并自动解包 Host 返回字段。"""
+
+    from maibot_sdk.context import PluginContext
+
+    captured: list[tuple[str, dict[str, object]]] = []
+
+    async def fake_rpc_call(method: str, plugin_id: str = "", payload: dict | None = None):
+        assert method == "cap.call"
+        assert plugin_id == "demo"
+        assert payload is not None
+        capability = payload["capability"]
+        captured.append((capability, dict(payload["args"])))
+        return {
+            "statistics.local.models": {"success": True, "models": [{"model_name": "model-a"}]},
+            "statistics.local.model_trend": {"success": True, "series": {"timestamps": ["2026-06-25"]}},
+            "statistics.local.token_trend": {"success": True, "series": {"total": 10}},
+            "statistics.local.token_distribution": {"success": True, "distribution": {"total": 10}},
+            "statistics.local.message_trend": {"success": True, "series": {"total": 3}},
+            "statistics.local.tool_trend": {"success": True, "series": {"total": 2}},
+            "statistics.local.online_time_trend": {"success": True, "series": {"total": 1.5}},
+        }[capability]
+
+    async def main() -> dict[str, object]:
+        ctx = PluginContext(plugin_id="demo", rpc_call=fake_rpc_call)
+        return {
+            "models": await ctx.statistics.local.models(days=7, limit=5),
+            "model_trend": await ctx.statistics.local.model_trend(days=7, bucket="hour", top_models=5),
+            "token_trend": await ctx.statistics.local.token_trend(days=7, group_by="model", top_items=5),
+            "token_distribution": await ctx.statistics.local.token_distribution(days=7, group_by="model", top_items=5),
+            "message_trend": await ctx.statistics.local.message_trend(days=7, top_chats=5),
+            "tool_trend": await ctx.statistics.local.tool_trend(days=7, top_tools=5),
+            "online_time_trend": await ctx.statistics.local.online_time_trend(days=7),
+        }
+
+    result = asyncio.run(main())
+
+    assert result == {
+        "models": [{"model_name": "model-a"}],
+        "model_trend": {"timestamps": ["2026-06-25"]},
+        "token_trend": {"total": 10},
+        "token_distribution": {"total": 10},
+        "message_trend": {"total": 3},
+        "tool_trend": {"total": 2},
+        "online_time_trend": {"total": 1.5},
+    }
+    assert captured == [
+        ("statistics.local.models", {"days": 7, "limit": 5}),
+        (
+            "statistics.local.model_trend",
+            {"days": 7, "bucket": "hour", "top_models": 5, "metric": "token", "module_name": ""},
+        ),
+        ("statistics.local.token_trend", {"days": 7, "bucket": "day", "group_by": "model", "top_items": 5}),
+        ("statistics.local.token_distribution", {"days": 7, "group_by": "model", "top_items": 5}),
+        ("statistics.local.message_trend", {"days": 7, "bucket": "day", "top_chats": 5}),
+        ("statistics.local.tool_trend", {"days": 7, "bucket": "day", "top_tools": 5}),
+        ("statistics.local.online_time_trend", {"days": 7, "bucket": "day"}),
+    ]
 
 
 def test_chat_capability_passes_platform_argument():

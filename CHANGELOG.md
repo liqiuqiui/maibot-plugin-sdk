@@ -7,38 +7,69 @@
 
 ## [Unreleased]
 
+## [2.6.0] - 2026-06-26
+
 ### 新增
 
-- `ChatCapability` 新增 `ctx.chat.open_session()`，支持通过 SDK 直接调用 Host 的 `chat.open_session` 能力打开或创建聊天流
+- 新增 `StatisticsCapability` 与 `ctx.statistics.local` 能力代理，支持读取 Host 本机轻量统计与计费数据
+- 新增 `PluginPaths` 与 `ctx.paths`，用于读取 Host 授予的插件持久化数据目录和非持久运行时目录
+- `PluginPaths` 从 `maibot_sdk` 顶层导出，插件可通过 `ctx.paths.data_dir` 和 `ctx.paths.runtime_dir` 读取标准目录
+
+
+
+## [2.5.4] - 2026-06-08
+
+### 新增
+
 - `LLMCapability` 新增 `ctx.llm.transcribe_audio()`，支持插件调用 Host 当前 `voice` 任务执行 ASR 语音识别
-- 新增 `MaisakaCapability` 与 `ctx.maisaka` 能力代理，支持 `ctx.maisaka.proactive.trigger()` 触发 Maisaka 主动任务，以及 `ctx.maisaka.context.append()` 追加 Maisaka 上下文消息
-- 插件配置 WebUI Schema 支持透传字段级 `json_schema_extra["i18n"]`，并新增配置节级 `__ui_i18n__`
+
+
+
+## [2.5.3] - 2026-06-07
+
+### 新增
+
+- 插件配置 WebUI Schema 支持透传字段级 `json_schema_extra["i18n"]`
+- 插件配置节新增 `__ui_i18n__`，用于向自动生成的模块和字段模型注入国际化配置
 
 ### 变更
 
-- `LLMCapability.generate()` 与 `generate_with_tools()` 的 `temperature`、`max_tokens` 默认值改为 `None`，省略时不再覆盖 Host 模型配置
-- 同步发布版本号到 `2.5.4`，对齐 `pyproject.toml`、`maibot_sdk.__version__`、`uv.lock` 与测试断言
-- `LLMCapability` 新增 `ctx.llm.embed()`，`MessageCapability` 新增 `ctx.message.get_by_id()`，补齐 Host 已注册能力
-- Host 新增 `send.forward` 与 `send.hybrid` 能力实现，对齐 SDK 已暴露的发送代理
+- `RenderCapability` 的渲染业务超时参数由 `timeout_ms` 调整为 `render_timeout_ms`
+- `PluginContext.call_host_method()` 新增 `timeout_ms` 入参，并与能力业务参数分开透传
+- `PluginContext.call_capability()` 新增 `timeout_ms` 入参，用于设置本次 RPC 超时
+
+
+
+## [2.5.2] - 2026-05-23
+
+### 修复
+
+- 修复 `LLMCapability.generate()` 与 `generate_with_tools()` 默认 `temperature`、`max_tokens` 覆盖 Host 模型配置的问题；省略时不再转发这些参数
+
+
+## [2.5.0] - 2026-05-19
+
+### 新增
+
+- `ChatCapability` 新增 `ctx.chat.open_session()`，支持插件按 `platform`、`chat_type`、`user_id` / `group_id` 打开或创建聊天流
+- 新增 `MaisakaCapability` 与 `ctx.maisaka` 能力代理，支持 `ctx.maisaka.proactive.trigger()` 与 `ctx.maisaka.context.append()`
+- `MaisakaCapability` 新增便捷别名 `trigger_proactive()` 与 `append_context()`
+- `LLMCapability` 新增 `ctx.llm.embed()`，支持单条文本或批量文本嵌入
+- `MessageCapability` 新增 `ctx.message.get_by_id()`，支持按 `message_id` 获取历史消息，并可通过 `chat_id` / `stream_id` 限定聊天流
+
+### 变更
+
+- SDK 侧补齐 `send.forward` 和 `send.hybrid` 能力实现与测试，对齐 Host 已暴露的发送能力
 
 ### 文档
 
-- 更新 `README.md`、`docs/guide.md` 与 `docs/migration-guide.md`，补充 `ctx.chat.open_session()` 说明
-- 更新 `README.md` 与 `docs/guide.md`，将能力代理数量同步为 16 个，并补充 Maisaka 能力代理说明
-- 更新 `docs/guide.md`，补充 `ctx.llm.embed()` 与 `ctx.message.get_by_id()` 说明
-- 更新 `docs/guide.md`，补充 `ctx.llm.transcribe_audio()` 的 ASR 调用说明与示例
-- 更新 `README.md`、`docs/guide.md` 与 `docs/migration-guide.md`，补充配置项与配置节多语言元数据写法
-- 更新 HookHandler 文档，补充 `maisaka.replyer.before_model_request` 消息改写 Hook
+- 更新 `README.md`、`docs/guide.md` 与 `docs/migration-guide.md`，补充 `ctx.chat.open_session()`、`ctx.maisaka`、`ctx.llm.embed()`、`ctx.message.get_by_id()`、`send.forward` 与 `send.hybrid` 说明
 
 ### 测试
 
-- 补充 `ctx.llm.generate()` 与 `generate_with_tools()` 省略 `temperature`、`max_tokens` 时不转发这些参数的回归测试
 - 补充 `ctx.chat.open_session()` 参数转发和返回值保留的回归测试
 - 补充 `ctx.maisaka.proactive.trigger()` 与 `ctx.maisaka.context.append()` 参数转发回归测试
 - 补充 `ctx.llm.embed()`、`ctx.message.get_by_id()`、`send.forward` 和 `send.hybrid` 的对齐回归测试
-- 补充 `ctx.llm.transcribe_audio()` 音频字节编码和参数转发回归测试
-- 补充配置字段、配置节与对象列表子字段 `i18n` 透传的回归测试
-
 
 ## [2.4.0] - 2026-04-27
 
@@ -53,14 +84,6 @@
 - SDK 开发依赖新增 `pyright`，并补充 Pyright 配置，使 SDK 包源码可直接运行 `uv run pyright`
 - 同步发布版本号到 `2.4.0`，对齐 `pyproject.toml`、`maibot_sdk.__version__`、`uv.lock` 与测试断言
 
-### 文档
-
-- 更新 `README.md` 与 `docs/guide.md`，补充 LLM Provider 插件的 manifest 静态声明、装饰器用法、请求字段、返回字段与冲突加载策略
-
-### 测试
-
-- 补充 `LLMProvider` 装饰器收集与 `LLMProviderBase.dispatch()` 回归测试
-- 验证 SDK 目录下 `uv run ruff check .`、`uv run ruff format --check .`、`uv run pyright`、`uv run mypy .` 可通过
 
 
 ## [2.3.0] - 2026-04-03

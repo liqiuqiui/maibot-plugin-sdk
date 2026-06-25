@@ -1692,6 +1692,7 @@ msg.modify_plain_text("新文本")
 | | `.get_id_by_name(name)` | 按名称查找 |
 | `self.ctx.knowledge` | `.search(query, limit)` | 知识库搜索 |
 | `self.ctx.tool` | `.get_definitions()` | 获取工具定义 |
+| `self.ctx.statistics` | `.local.models()` / `.local.token_trend()` 等 | 本机统计与计费数据 |
 | `self.ctx.component` | `.get_all_plugins()` | 全部插件 |
 | | `.get_plugin_info(name)` | 插件信息 |
 | | `.list_loaded_plugins()` | 已加载插件 |

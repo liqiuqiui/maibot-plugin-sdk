@@ -11,6 +11,7 @@
 - [插件结构](#插件结构)
 - [插件基类](#插件基类)
   - [配置模型](#配置模型)
+  - [运行时路径](#运行时路径)
 - [组件装饰器](#组件装饰器)
   - [API](#api)
   - [Action](#action)
@@ -281,6 +282,22 @@ class GreetingPlugin(MaiBotPlugin):
 - `Literal[...]` 会自动生成 `choices`；若字段类型为 `list[Literal[...]]`，生成的 Schema 会继续使用 `type: "select"`，并额外输出 `multiple: true`。
 - 字段级多语言文本可写入 `json_schema_extra["i18n"]`，结构为 `{locale: {"label": "...", "hint": "...", "placeholder": "..."}}`。WebUI 会优先按当前语言读取 `i18n`，再回退到 `label`、`hint`、`placeholder` 的默认文本。
 - 未声明 `config_model` 时，插件仍然可以只使用 `await self.ctx.config.get(...)` 读取配置。
+
+### 运行时路径
+
+插件需要保存运行时文件时，应使用 Runner 授予的标准路径，不要自行根据插件源码目录或主程序根目录拼接路径：
+
+```python
+data_path = self.ctx.paths.data_dir / "records.json"
+runtime_path = self.ctx.paths.runtime_dir / "render.png"
+```
+
+| 属性 | 说明 |
+|------|------|
+| `self.ctx.paths.data_dir` | 插件持久化数据目录，默认由 Host 映射到 `data/plugins/<plugin_id>/` |
+| `self.ctx.paths.runtime_dir` | 插件非持久运行时目录，默认由 Host 映射到 `temp/plugins/<plugin_id>/` |
+
+`data_dir` 用于数据库、JSON、用户设置等需要长期保留的数据；`runtime_dir` 用于缓存、下载暂存、渲染中间产物等可清理文件。实际路径由运行时按插件 ID 分配，插件只使用被授予的目录。
 
 ---
 
@@ -877,7 +894,7 @@ class ExampleLLMPlugin(MaiBotPlugin):
 
 所有能力通过 `self.ctx` 访问。底层统一转发为 RPC 请求，插件无需关心 IPC 细节。
 
-当前 `PluginContext` 暴露 16 个能力代理：`api`、`gateway`、`send`、`db`、`llm`、`config`、`emoji`、`message`、`frequency`、`component`、`chat`、`person`、`render`、`knowledge`、`tool`、`maisaka`，以及一个标准 `logging.Logger` 形式的 `logger` 属性。
+当前 `PluginContext` 暴露 17 个能力代理：`api`、`gateway`、`send`、`db`、`llm`、`config`、`emoji`、`message`、`frequency`、`component`、`chat`、`person`、`render`、`knowledge`、`tool`、`statistics`、`maisaka`，以及一个标准 `logging.Logger` 形式的 `logger` 属性。
 
 ### API -- 插件 API
 
@@ -1434,6 +1451,39 @@ tool = self.ctx.tool
 返回的列表中每个元素包含 `name` 和 `definition` 字段。
 
 `tool.get_definitions()` 会直接返回工具定义列表，不需要再从 RPC 结果里手动读取 `tools` 字段。
+
+### Statistics -- 本机统计
+
+```python
+statistics = self.ctx.statistics
+```
+
+| 方法 | 参数 | 说明 |
+|------|------|------|
+| `await statistics.local.models(days=7, limit=10)` | `days: int`, `limit: int` | 获取本机模型维度汇总统计 |
+| `await statistics.local.model_trend(days=7, bucket="day", top_models=10, metric="token", module_name="")` | `metric: token/request/cost/latency` | 获取本机模型调用趋势 |
+| `await statistics.local.token_trend(days=7, bucket="day", group_by="", top_items=10)` | `group_by: model/module/provider/type` | 获取本机 token 使用趋势 |
+| `await statistics.local.token_distribution(days=7, group_by="model", top_items=10)` | `group_by: model/module/provider/type` | 获取本机 token 使用分布 |
+| `await statistics.local.message_trend(days=7, bucket="day", top_chats=10)` | `bucket: hour/day` | 获取本机聊天流消息量趋势 |
+| `await statistics.local.tool_trend(days=7, bucket="day", top_tools=10)` | `bucket: hour/day` | 获取本机工具调用趋势 |
+| `await statistics.local.online_time_trend(days=7, bucket="day")` | `bucket: hour/day` | 获取本机在线时长趋势 |
+
+示例：
+
+```python
+models = await self.ctx.statistics.local.models(days=7)
+token_series = await self.ctx.statistics.local.token_trend(days=7, group_by="model")
+message_series = await self.ctx.statistics.local.message_trend(days=7)
+
+top_model = models[0]["model_name"] if models else "unknown"
+```
+
+说明：
+
+- `statistics.local.*` 只读取当前 MaiBot 本机统计数据，不包含遥测或上传后的客户端统计数据。
+- 趋势类方法会直接返回 `series` 结构，包含 `timestamps`、`values_by_key`、`labels_by_key`、`total` 和 `source_count`。
+- `token_distribution()` 会直接返回 `distribution` 结构，包含可用于饼图的 `pies`。
+- 插件需要在 `_manifest.json` 的 `capabilities` 中声明对应能力，例如 `statistics.local.token_trend`。
 
 ### Maisaka -- 主动任务
 
