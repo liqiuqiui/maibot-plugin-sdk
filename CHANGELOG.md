@@ -14,7 +14,7 @@
 - 新增 `StatisticsCapability` 与 `ctx.statistics.local` 能力代理，支持读取 Host 本机轻量统计与计费数据
 - 新增 `PluginPaths` 与 `ctx.paths`，用于读取 Host 授予的插件持久化数据目录和非持久运行时目录
 - `PluginPaths` 从 `maibot_sdk` 顶层导出，插件可通过 `ctx.paths.data_dir` 和 `ctx.paths.runtime_dir` 读取标准目录
-
+- 支持 list[Literal] 多选配置 schema
 
 
 ## [2.5.4] - 2026-06-08
